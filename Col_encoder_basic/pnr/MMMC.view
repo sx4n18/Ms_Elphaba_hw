@@ -1,0 +1,109 @@
+###############################################################
+## The mmmc file for the innovus flow
+###############################################################
+
+## libraries based on different voltage and temperatures
+## slow library 
+create_library_set -name max_timing \
+                   -timing { /eda/design_kits/xkit_root/xh018/diglibs/D_CELLS_HD/v5_0/liberty_LPMOS/v5_0_0/PVT_1_80V_range/D_CELLS_HD_LPMOS_slow_1_62V_125C.lib \
+                   	 /eda/design_kits/xkit_root/xh018/diglibs/IO_CELLS_3V/v2_1/liberty_LPMOS/v2_1_0/PVT_1_80V_3_30V_range/IO_CELLS_3V_LPMOS_slow_1_62V_3_00V_125C.lib }
+
+## fast library
+create_library_set -name min_timing \
+                   -timing { /eda/design_kits/xkit_root/xh018/diglibs/D_CELLS_HD/v5_0/liberty_LPMOS/v5_0_0/PVT_1_80V_range/D_CELLS_HD_LPMOS_fast_1_98V_m40C.lib \
+                   	 /eda/design_kits/xkit_root/xh018/diglibs/IO_CELLS_3V/v2_1/liberty_LPMOS/v2_1_0/PVT_1_80V_3_30V_range/IO_CELLS_3V_LPMOS_fast_1_98V_3_60V_m40C.lib }
+
+## typical lirbary
+create_library_set -nam typ_timing \
+				   -timing { /eda/design_kits/xkit_root/xh018/diglibs/D_CELLS_HD/v5_0/liberty_LPMOS/v5_0_0/PVT_1_80V_range/D_CELLS_HD_LPMOS_typ_1_80V_25C.lib \
+                   	 /eda/design_kits/xkit_root/xh018/diglibs/IO_CELLS_3V/v2_1/liberty_LPMOS/v2_1_0/PVT_1_80V_3_30V_range/IO_CELLS_3V_LPMOS_typ_1_80V_3_30V_25C.lib }
+
+## different timing conditions based on libraries
+create_timing_condition -name default_mapping_tc_slow\
+                        -library_sets max_timing
+
+create_timing_condition -name default_mapping_tc_fast\
+			-library_sets min_timing
+
+create_timing_condition -name default_mapping_tc_typical\
+						-library_sets typ_timing
+
+## create RC corners based on the capacitance 
+## typical value captable 
+create_rc_corner -name RCcorners_typ\
+	-cap_table /eda/design_kits/xkit_root/xh018/cadence/v9_0/capTbl/v9_0_1/xh018_xx31_MET3_METMID_typ.capTbl\
+	-pre_route_res 1\
+	-post_route_res 1\
+	-pre_route_cap 1\
+	-post_route_cap 1\
+	-post_route_cross_cap 1\
+	-pre_route_clock_res 0\
+	-pre_route_clock_cap 0\
+	-temperature 25.0
+	#-qrc_tech /eda/design_kits/xkit_root/xh018/cadence/v9_0/QRC_assura/v9_0_1/XH018_1131/QRC-Typ/qrcTechFile
+
+## max value captable
+create_rc_corner -name RCcorners_max\
+	-cap_table /eda/design_kits/xkit_root/xh018/cadence/v9_0/capTbl/v9_0_1/xh018_xx31_MET3_METMID_max.capTbl\
+	-pre_route_res 1\
+	-post_route_res 1\
+	-pre_route_cap 1\
+	-post_route_cap 1\
+	-post_route_cross_cap 1\
+	-pre_route_clock_res 0\
+	-pre_route_clock_cap 0\
+	-temperature 125.0
+
+## max value captable
+create_rc_corner -name RCcorners_min\
+	-cap_table /eda/design_kits/xkit_root/xh018/cadence/v9_0/capTbl/v9_0_1/xh018_xx31_MET3_METMID_min.capTbl\
+	-pre_route_res 1\
+	-post_route_res 1\
+	-pre_route_cap 1\
+	-post_route_cap 1\
+	-post_route_cross_cap 1\
+	-pre_route_clock_res 0\
+	-pre_route_clock_cap 0\
+	-temperature -40.0
+
+
+## delay corner defined with RC corner and timing condition
+create_delay_corner -name max_delay\
+	-timing_condition {default_mapping_tc_slow}\
+	-rc_corner RCcorners_max
+
+
+create_delay_corner -name min_delay\
+	-timing_condition {default_mapping_tc_fast}\
+	-rc_corner RCcorners_min
+
+
+create_delay_corner -name typ_delay\
+	-timing_condition {default_mapping_tc_typical}\
+	-rc_corner RCcorners_typ
+
+
+
+
+## Constraint mode
+
+create_constraint_mode -name sdc_cons_max\
+	-sdc_files /export/home/j05003sx/New_proj/Col_encoder_basic/syn/outputs/Col_encoder_basic.sdc
+
+create_constraint_mode -name sdc_cons_min\
+	-sdc_files /export/home/j05003sx/New_proj/Col_encoder_basic/syn/outputs/Col_encoder_basic.sdc
+
+
+
+## create Analysis view
+
+create_analysis_view -name worst_case -constraint_mode sdc_cons_max -delay_corner max_delay
+
+create_analysis_view -name best_case -constraint_mode sdc_cons_min -delay_corner min_delay
+
+## create_analysis_view -name scan_mode_analyse -constraint_mode scan_shift -delay_corner typ_delay
+
+## set analysis view to check setup for slowest case and hold for fastest case
+
+set_analysis_view -setup {worst_case} -hold {best_case}
+
