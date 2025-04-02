@@ -2,6 +2,9 @@
 */pnr/*.log*
 */pnr/*.logv*
 */pnr/*.fp.spr
+*/pnr/*lef
+*/pnr/*.rpt
+*/pnr/*.rpt.old
 */pnr/saved_design
 */pnr/timingReports
 */pnr/outputs
@@ -9,10 +12,12 @@
 */sim/*.svwf
 */sim/xcelium.d
 */sim/xrun*
+*/sim/waves.shm
 */syn/*.cmd*
 */syn/fv
 */syn/outputs
 */syn/*.log*
+*/syn/.rs_j05003sx.tstamp
 Col_encoder_basic/pnr/Col_encoder_basic.antenna.lef
 Col_encoder_basic/pnr/Col_encoder_basic.antenna.rpt
 Col_encoder_basic/pnr/Col_encoder_basic.checkPlace
