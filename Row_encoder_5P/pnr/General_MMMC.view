@@ -1,0 +1,76 @@
+
+###############################################################
+## The mmmc file for the innovus flow
+## Generated on Wed Mar 19 15:20:50 GMT 2025 by Gen_doc_pnr
+##
+## This is a very general MMMC file, if you need any more PVT 
+## or timing settings, please make modifications.
+###############################################################
+
+
+## libraries based on different voltage and temperatures
+
+## Slow library
+
+create_library_set -name max_timing \
+                   -timing /eda/design_kits/xkit_root/xh018/diglibs/D_CELLS_HD/v5_0/liberty_LPMOS/v5_0_0/PVT_1_80V_range/D_CELLS_HD_LPMOS_slow_1_62V_150C.lib
+
+
+## Fast library 
+
+create_library_set -name min_timing \
+                   -timing /eda/design_kits/xkit_root/xh018/diglibs/D_CELLS_HD/v5_0/liberty_LPMOS/v5_0_0/PVT_1_80V_range/D_CELLS_HD_LPMOS_fast_1_98V_m40C.lib
+
+
+## different timing conditions based on libraries
+create_timing_condition -name default_mapping_tc_slow \
+                        -library_sets max_timing
+
+create_timing_condition -name default_mapping_tc_fast \
+						-library_sets min_timing
+
+
+
+
+## create RC corners based on the capacitance and QRC techfile
+create_rc_corner -name RCcorners \
+	-cap_table /eda/design_kits/xkit_root/xh018/cadence/v9_0/capTbl/v9_0_1/xh018_xx31_MET3_METMID_typ.capTbl \
+	-pre_route_res 1\
+	-post_route_res 1\
+	-pre_route_cap 1\
+	-post_route_cap 1\
+	-post_route_cross_cap 1\
+	-pre_route_clock_res 0\
+	-pre_route_clock_cap 0
+
+
+## delay corner defined with RC corner and timing condition
+create_delay_corner -name max_delay\
+	-timing_condition {default_mapping_tc_slow}\
+	-rc_corner RCcorners
+
+create_delay_corner -name min_delay	-timing_condition {default_mapping_tc_fast}\
+	-rc_corner RCcorners
+
+
+
+
+## Constraint mode
+
+create_constraint_mode -name sdc_cons\
+	-sdc_files ../pnr/Row_encoder_5P_syn.sdc
+
+
+## create Analysis view
+
+create_analysis_view -name worst_case -constraint_mode sdc_cons -delay_corner max_delay
+
+create_analysis_view -name best_case -constraint_mode sdc_cons -delay_corner min_delay
+
+
+## set analysis view to check setup for slowest case and hold for fastest case
+
+set_analysis_view -setup worst_case -hold best_case
+
+
+
