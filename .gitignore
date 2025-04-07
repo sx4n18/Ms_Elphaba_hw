@@ -29,6 +29,9 @@ Col_encoder_basic/pnr/Col_encoder_basic_layout_pins/
 Col_encoder_basic/pnr/completed_layout_col_encoder/
 Col_encoder_basic/pnr/detail_routed/
 Col_encoder_basic/pnr/post_CTS_unrestricted/
+results.xml
+*/coco/sim_build
+*/__pycache__
 
 
 

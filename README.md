@@ -20,5 +20,7 @@ Each folder has the following structure:
 ├── syn
 ├── sim
 ├── tcl
+├── coco
 └── pnr
 ```
+Where the folder coco is the one that conatin cocotb testbenches with a makefile and a testbench python file
