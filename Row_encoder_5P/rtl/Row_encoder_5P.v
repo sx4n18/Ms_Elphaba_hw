@@ -32,6 +32,216 @@ module Row_encoder_5P (
 // 1000_0000_0000_0000
 
 
+// registers declaration
 
+reg [14:0] repeating_pixels;
+reg [14:0] tok_record;
+reg [1:0] curr_state, next_state;
+reg data_flag, state_flag, wake_up_flag;
+reg data_valid_x_1;
+wire data_valid_rising;
+
+always @(posedge clk)
+begin
+	data_valid_x_1 <= data_valid;
+end
+
+
+assign data_valid_rising = data_valid & (~data_valid_x_1);
+
+
+
+parameter IDLE = 0;
+parameter PUSH = 1;
+parameter ALARM = 2;
+parameter WAIT = 3;
+
+
+
+
+
+
+
+always @(posedge clk, negedge rst_n)
+begin: STATE_REG 
+if (!rst_n) 
+	curr_state <= IDLE;
+else
+	curr_state <= next_state;
+end
+
+
+always @(posedge clk or negedge rst_n) 
+begin : REG_UPDATE
+	if(~rst_n) begin
+		repeating_pixels <= 0;
+		data_flag <= 0;
+		state_flag <= 0;
+		wake_up_flag <= 0;
+		tok_record <= 0;
+	end else begin
+		
+		case (curr_state)
+
+		IDLE: 
+		begin 
+			if (data_valid_rising) begin
+				repeating_pixels <= pixel_in;
+				data_flag <= 1;
+			end
+		end
+
+		PUSH:
+		begin
+			// check if the state is just switched back from WAIT
+			if (wake_up_flag) begin 
+				wake_up_flag <= 0;
+			end
+			else 
+			// push new data in the buffer if the input data is valid and different
+			// set the flag so it can be output
+			if (data_valid_rising && (repeating_pixels != pixel_in)) begin 
+				repeating_pixels <= pixel_in;
+				data_flag <= 1;
+			end
+			// if the input is not valid OR the input data is repeating, check the data flag
+			// it should only last for one more cycle.
+			else if (data_flag) begin
+				data_flag <= 0;
+			end
+			 
+			if (tik_tok[14:0] == 15'h7FFF) begin
+			 	state_flag <= 1;
+			end 
+
+		end 
+
+		ALARM:
+		begin 
+			if (data_flag) begin
+				data_flag <= 0;
+			end
+			// if there is data coming in during ALARM
+			else if (data_valid_rising && (repeating_pixels != pixel_in))begin 
+				repeating_pixels <= pixel_in;
+				data_flag <= 1;
+			end
+
+		 end 
+
+		WAIT:
+		begin 
+			if (data_valid_rising && (repeating_pixels != pixel_in)) begin
+				repeating_pixels <= pixel_in;
+				data_flag <= 1;
+				wake_up_flag <= 1;
+				tok_record <= tik_tok [14:0];
+			end
+
+			else if (data_flag)
+			begin 
+				data_flag <= 0;	
+			end
+
+			if (tik_tok[14:0] == 15'h7FFF) begin
+				state_flag <= 0;
+			end
+
+		 end 
+		
+		
+		default : /* default */;
+		endcase
+
+	end
+end
+
+
+always @(*) 
+begin : COMB_FSM
+
+	next_state = curr_state;
+	encoded_data = 0;
+	data_ready = 0;
+	case (curr_state)
+
+		IDLE:
+		begin 
+			if (data_valid_rising) begin
+				next_state = PUSH;
+			end
+		 end 
+
+		PUSH:
+		begin
+			// if the state just switched back from WAIT, output timestamp first
+			if (wake_up_flag) begin
+				encoded_data = {1'b1, tok_record};
+				data_ready = 1;
+			end
+			else
+			// if the data flag is up, the data should be output
+			// (input data is valid and different and has been saved in the buffer)
+			if (data_flag)
+			begin 
+				encoded_data = {1'b0, repeating_pixels};
+				data_ready = 1;
+			end 
+
+			// if the data is valid and repeating
+			if (data_valid_rising && (repeating_pixels == pixel_in)) begin
+				next_state = WAIT;
+			end
+			else if (tik_tok[14:0] == 15'h7FFF) begin
+				next_state = ALARM;
+			end
+
+		end 
+
+		ALARM: 
+		begin
+			if (data_flag) begin
+			 	encoded_data = {1'b0, repeating_pixels};
+			 	data_ready = 1;
+			end
+			else
+			begin 
+				encoded_data = 16'h8000;
+				data_ready = 1;
+				
+				if (state_flag) 
+				begin
+					next_state = PUSH;
+				end
+				else
+				begin 
+					next_state = WAIT;
+				end
+			
+			end 
+			
+
+			
+		end
+
+
+		WAIT: 
+		begin
+			// if the incoming data is not the same, we should switch to push 
+			if (data_valid_rising && (repeating_pixels != pixel_in)) begin
+				next_state = PUSH;
+			end
+			// else if there is an alarm
+			else if (tik_tok[14:0] == 15'h7FFF) begin
+				next_state = ALARM;
+			end
+
+		end
+
+	
+		default : next_state = IDLE;
+	endcase
+
+end
 
 endmodule
