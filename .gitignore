@@ -33,6 +33,7 @@ results.xml
 */coco/sim_build
 */coco/__pycache__
 /JC_gen_data
+.idea
 
 
 
