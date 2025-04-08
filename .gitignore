@@ -31,7 +31,7 @@ Col_encoder_basic/pnr/detail_routed/
 Col_encoder_basic/pnr/post_CTS_unrestricted/
 results.xml
 */coco/sim_build
-*/__pycache__
+*/coco/__pycache__
 
 
 
