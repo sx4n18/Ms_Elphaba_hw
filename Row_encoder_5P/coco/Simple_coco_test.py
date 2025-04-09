@@ -19,9 +19,33 @@ from cocotb.clock import Clock
 ## The clock runs at 40MHz, while the pixel_in and data valid signal are generated at 20MHz.
 ## In the meantime, tik_tok increment at 20MHz, which is the same as the pixel_in and data valid signal.
 
+## The following will be the monitor at the output side
+@cocotb.coroutine
+async def encoder_monitor_and_record(dut):
+    """
+    Monitor the output data from the DUT.
+
+    The output data encoded_data is the encoded data from the DUT, which will be flagged valid
+    when data_valid is high.
+    """
+
+    # Wait for the rising edge of the rst_n signal
+    await RisingEdge(dut.rst_n)
+
+    # Loop forever
+    while True:
+        await RisingEdge(dut.clk)
+        # Check if the data_ready signal is high
+        if dut.data_ready.value == 1:
+        # If the data_ready signal is high, print the encoded data
+            encode_data = int(dut.encoded_data.value)
+            # Print the encoded data in 16-bit hex format
+            print(f"Encoded data: {encode_data:04x}")
+        else:
+            pass
 
 
-
+## The actual testbench is listed below
 @cocotb.test()
 async def test_5P_encoder(dut):
     """
@@ -30,19 +54,21 @@ async def test_5P_encoder(dut):
 
     # Create a clock signal that runs at 40MHz
     cocotb.start_soon(Clock(dut.clk, 25, units='ns').start())
+    # fork the monitor coroutine
+    cocotb.start_soon(encoder_monitor_and_record(dut))
 
     # Reset the DUT and initiate all the signals
-    dut.rst_n <= 1
+    dut.rst_n.value = 1
     dut.data_valid.value = 0
     dut.pixel_in.value = 0
     dut.tik_tok.value = 0
     await Timer(10, units='ns')
     await RisingEdge(dut.clk)
-    dut.rst_n <= 0
+    dut.rst_n.value = 0
     await RisingEdge(dut.clk)
     # wait for 23 ns seconds
     await Timer(23, units='ns')
-    dut.rst_n <= 1
+    dut.rst_n.value = 1
     await RisingEdge(dut.clk)
     await Timer(50, units='ns')
     tik_tok = 0
