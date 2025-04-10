@@ -34,6 +34,10 @@ results.xml
 */coco/__pycache__
 /JC_gen_data
 .idea
+__pycache__/
+sim_build/
+Coco_test/Row_5P_test/monitor_data.txt
+
 
 
 
