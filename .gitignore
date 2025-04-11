@@ -36,7 +36,8 @@ results.xml
 .idea
 __pycache__/
 sim_build/
-Coco_test/Row_5P_test/monitor_data.txt
+Coco_test/*/monitor_data.txt
+
 
 
 
