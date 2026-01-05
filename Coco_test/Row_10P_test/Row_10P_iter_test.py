@@ -23,13 +23,13 @@ def get_data_ready_for_driver(data):
     """
     This function shall prepare the input data ready for the driver.
 
-    This function expects the data to be a 1 by 5 numpy ndarray, where each element should be within the range of [0,7]
-    This function will convert the data into a 15 bit binary number where each value will take up 3 bits.
-    The data should be in the order of [4, 3, 2, 1, 0]
+    This function expects the data to be a 1 by 10 numpy ndarray, where each element should be within the range of [0,7]
+    This function will convert the data into a 30 bit binary number where each value will take up 3 bits.
+    The data should be in the order of [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
     """
     data_ready = 0
-    for i in range(5):
-        data_ready = (data_ready << 3) | int(data[4-i])
+    for i in range(10):
+        data_ready = (data_ready << 3) | int(data[9-i])
     return data_ready
 
 
@@ -39,20 +39,20 @@ Quan_data = load_npz("../../JC_gen_data/Quan_dat_files/ColB_quantised.npz").toar
 datay, datax = np.shape(Quan_data)
 print("The shape of the data is: ", datax, datay)
 
-bathch_size = 5
+bathch_size = 10
 num_iter = int(datax / bathch_size)
 print("The number of iterations is: ", num_iter)
 print("There will be ", datay, "rows of data to be processed")
 
 # The data needs to be split into 5 pixel chunks
 split_data = split_data(Quan_data, bathch_size)
-input_data_lib = split_data[100:102]
+input_data_lib = split_data[49:51]
 print("The number of input data is: ", len(input_data_lib))
 print("Input data size:", input_data_lib[0].shape)
 
 # Open up the text file to record the monitored data
 monitor_file = open("./monitor_data.txt", "w")
-monitor_file.write("This is the monitored data for the 5P row encoder test\n")
+monitor_file.write("This is the monitored data for the 10P row encoder test\n")
 monitor_file.write("The number of iterations is: " + str(num_iter) + "\n")
 monitor_file.write("////////////////////////////////////////////////////\n")
 monitor_file.close()
@@ -75,7 +75,7 @@ async def monitor_data(dut, monitor_file):
             # Read the output data
             encoded_data = int(dut.encoded_data.value)
             # Print the output data in hex format
-            print(f"Encoded data: {encoded_data:04x}")
+            print(f"Encoded data: {encoded_data:08x}")
             # Write the output data to the text file in hex format
             monitor_file.write(hex(encoded_data) + "\n")
 
@@ -94,7 +94,7 @@ async def tik_tok_increment(dut):
 
 
 @cocotb.coroutine
-async def test_5P_row_encoder(dut, input_data):
+async def test_10P_row_encoder(dut, input_data):
     """
     Test the 5P row encoder with the quantised data.
     where the module will be running at 40 MHz and the data_valid signal and pixel_in signal will be set at 20 MHz.
@@ -154,7 +154,7 @@ async def test_5P_row_encoder(dut, input_data):
 
 
 ## Generate the test factory
-tf = TestFactory(test_5P_row_encoder)
+tf = TestFactory(test_10P_row_encoder)
 ## Add the test case to the test factory using different test data
 tf.add_option('input_data', split_data)
 ## Run the test factory
