@@ -3,7 +3,11 @@ module Row_encoder_5P_plus (
 	input rst_n,           // Asynchronous reset active low
 	input data_valid,      // data valid signal that indicates the validity of pixel values
 	input [14:0] pixel_in,  // pixel in from pixel, 3 bit each, but there are 5 pixels.
-	input [44:0] tik_tok,  // global timer, with 45 bit in total, which supports up to 488.67 hours
+	input [29:0] tik_tok,  // global timer, with 45 bit in total, which supports up to 488.67 hours
+
+	// new ports and controlled by SPI control bank//
+	input [4:0] pixel_mask,    // This will be the mask to block pixels, 1 is on, 0 is off.
+	// new ports and controlled by SPI control bank// 
 
 	output reg [15:0] encoded_data,   // encoded data, each packet contains 16 bits
 	output reg data_ready			  // data ready signal flags the data validity
@@ -39,10 +43,12 @@ module Row_encoder_5P_plus (
 reg [14:0] repeating_pixels;
 reg [14:0] tok_record;
 reg [1:0] curr_state, next_state;
-reg data_flag, state_flag, wake_up_flag;
+reg [14:0] mid_tok;
+reg data_flag, wake_up_flag;
 reg data_valid_x_1;
 reg nLOW_flag;
 wire data_valid_rising;
+wire [14:0] pixel_in_maksed;
 
 always @(posedge clk)
 begin
@@ -52,6 +58,11 @@ end
 
 assign data_valid_rising = data_valid & (~data_valid_x_1);
 
+assign pixel_in_maksed[14:12] = pixel_mask[4] ? pixel_in[14:12] : 3'b000;
+assign pixel_in_maksed[11:9] = pixel_mask[3] ? pixel_in[11:9] : 3'b000;
+assign pixel_in_maksed[8:6] = pixel_mask[2] ? pixel_in[8:6] : 3'b000;
+assign pixel_in_maksed[5:3] = pixel_mask[1] ? pixel_in[5:3] : 3'b000;
+assign pixel_in_maksed[2:0] = pixel_mask[0] ? pixel_in[2:0] : 3'b000;
 
 
 parameter IDLE = 0;
@@ -79,10 +90,10 @@ begin : REG_UPDATE
 	if(~rst_n) begin
 		repeating_pixels <= 0;
 		data_flag <= 0;
-		state_flag <= 0;
 		wake_up_flag <= 0;
 		tok_record <= 0;
 		nLOW_flag <= 0;
+		mid_tok <= 0;
 	end else begin
 		
 		case (curr_state)
@@ -90,7 +101,7 @@ begin : REG_UPDATE
 		IDLE: 
 		begin 
 			if (data_valid_rising) begin
-				repeating_pixels <= pixel_in;
+				repeating_pixels <= pixel_in_maksed;
 				data_flag <= 1;
 			end
 		end
@@ -104,8 +115,8 @@ begin : REG_UPDATE
 			else 
 			// push new data in the buffer if the input data is valid and different
 			// set the flag so it can be output
-			if (data_valid_rising && (repeating_pixels != pixel_in)) begin 
-				repeating_pixels <= pixel_in;
+			if (data_valid_rising && (repeating_pixels != pixel_in_maksed)) begin 
+				repeating_pixels <= pixel_in_maksed;
 				data_flag <= 1;
 			end
 			// if the input is not valid OR the input data is repeating, check the data flag
@@ -113,11 +124,14 @@ begin : REG_UPDATE
 			else if (data_flag) begin
 				data_flag <= 0;
 			end
-			 
+			
+			/*
+			// We do not need to decide if we hopped from PUSH or WAIT to ALARM now. Therefore the flag to flag 
+			// the state that ALARM was hopped from is not needed anymore.
 			if (tik_tok[14:0] == 15'h7FFF) begin
 			 	state_flag <= 1;
 			end 
-
+			*/ 
 		end 
 
 		ALARM:
@@ -142,8 +156,8 @@ begin : REG_UPDATE
 
 		WAIT:
 		begin 
-			if (data_valid_rising && (repeating_pixels != pixel_in)) begin
-				repeating_pixels <= pixel_in;
+			if (data_valid_rising && (repeating_pixels != pixel_in_maksed)) begin
+				repeating_pixels <= pixel_in_maksed;
 				data_flag <= 1;
 				wake_up_flag <= 1;
 				tok_record <= tik_tok [14:0];
@@ -155,7 +169,8 @@ begin : REG_UPDATE
 			end
 
 			if (tik_tok[14:0] == 15'h7FFF) begin
-				state_flag <= 0;
+				//state_flag <= 0;
+				mid_tok <= tik_tok [29:15];
 			end
 
 		 end 
@@ -200,7 +215,7 @@ begin : COMB_FSM
 			end 
 
 			// if the data is valid and repeating
-			if (data_valid_rising && (repeating_pixels == pixel_in)) begin
+			if (data_valid_rising && (repeating_pixels == pixel_in_maksed)) begin
 				next_state = WAIT;
 			end
 
@@ -231,7 +246,7 @@ begin : COMB_FSM
 				end
 				else
 				begin
-					encoded_data = tik_tok[29:15];
+					encoded_data = {1'b1, mid_tok +1};
 					data_ready = 1;
 					next_state = WAIT;
 				end
@@ -256,7 +271,7 @@ begin : COMB_FSM
 		WAIT: 
 		begin
 			// if the incoming data is not the same, we should switch to push 
-			if (data_valid_rising && (repeating_pixels != pixel_in)) begin
+			if (data_valid_rising && (repeating_pixels != pixel_in_maksed)) begin
 				next_state = PUSH;
 			end
 			// else if there is an alarm

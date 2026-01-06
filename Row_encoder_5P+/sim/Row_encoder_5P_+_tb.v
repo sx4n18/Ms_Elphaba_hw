@@ -24,6 +24,7 @@ module Row_encoder_5P_plus_tb;
 		.data_valid(data_valid),
 		.pixel_in(pixel_in),
 		.tik_tok(tik_tok),
+		.pixel_mask(5'b10111),
 		.encoded_data(encoded_data),
 		.data_ready(data_ready)
 	);
